@@ -1,0 +1,200 @@
+
+ Exercise 1: Ranking and Window Functions
+ Goal: Use ROW_NUMBER(), RANK(), DENSE_RANK(), OVER(), and PARTITION BY.
+ Scenario:
+ Find the top 3 most expensive products in each category using different ranking functions.
+
+
+SELECT *
+FROM (
+    SELECT 
+        ProductID,
+        ProductName,
+        Category,
+        Price,
+        ROW_NUMBER() OVER (PARTITION BY Category ORDER BY Price DESC) AS RowNum
+    FROM Products
+) AS RankedProducts
+WHERE RowNum <= 3;
+
+
+SELECT *
+FROM (
+    SELECT 
+        ProductID,
+        ProductName,
+        Category,
+        Price,
+        RANK() OVER (PARTITION BY Category ORDER BY Price DESC) AS RankVal
+    FROM Products
+) AS RankedProducts
+WHERE RankVal <= 3;
+
+
+SELECT *
+FROM (
+    SELECT 
+        ProductID,
+        ProductName,
+        Category,
+        Price,
+        DENSE_RANK() OVER (PARTITION BY Category ORDER BY Price DESC) AS DenseRankVal
+    FROM Products
+) AS RankedProducts
+WHERE DenseRankVal <= 3;
+
+
+
+ Exercise 2: Aggregation with GROUPING SETS, CUBE, and ROLLUP
+ Goal: Analyze sales data across multiple dimensions.
+ Scenario:
+ Generate a report showing total quantity sold by Region and Category using GROUPING SETS, ROLLUP, and CUBE.
+
+WITH SalesData AS (
+    SELECT 
+        c.Region,
+        p.Category,
+        od.Quantity
+    FROM OrderDetails od
+    JOIN Orders o ON od.OrderID = o.OrderID
+    JOIN Customers c ON o.CustomerID = c.CustomerID
+    JOIN Products p ON od.ProductID = p.ProductID
+)
+
+
+SELECT 
+    Region,
+    Category,
+    SUM(Quantity) AS TotalQuantity
+FROM SalesData
+GROUP BY GROUPING SETS (
+    (Region, Category),
+    (Region),
+    (Category),
+    ()
+);
+
+
+SELECT 
+    Region,
+    Category,
+    SUM(Quantity) AS TotalQuantity
+FROM SalesData
+GROUP BY ROLLUP (Region, Category);
+
+
+SELECT 
+    Region,
+    Category,
+    SUM(Quantity) AS TotalQuantity
+FROM SalesData
+GROUP BY CUBE (Region, Category);
+
+
+ Exercise 3: CTEs and MERGE
+ Goal: Use WITH, CTEs, Recursive CTEs, and MERGE.
+ Scenario:
+ a) Create a recursive CTE to generate a calendar table.
+ b) Use a MERGE statement to update or insert product prices from a staging table
+
+
+
+WITH Calendar AS (
+    SELECT CAST('2025-01-01' AS DATE) AS CalendarDate
+    UNION ALL
+    SELECT DATEADD(DAY, 1, CalendarDate)
+    FROM Calendar
+    WHERE CalendarDate < '2025-01-31'
+)
+SELECT * FROM Calendar;
+
+
+CREATE TABLE StagingProducts (
+    ProductID INT,
+    ProductName VARCHAR(100),
+    Category VARCHAR(50),
+    Price DECIMAL(10, 2)
+);
+
+-- Sample staging data
+INSERT INTO StagingProducts VALUES
+(1, 'Laptop', 'Electronics', 1250.00),
+(5, 'Smartwatch', 'Electronics', 300.00);
+
+
+MERGE Products AS target
+USING StagingProducts AS source
+ON target.ProductID = source.ProductID
+WHEN MATCHED THEN
+    UPDATE SET 
+        target.ProductName = source.ProductName,
+        target.Category = source.Category,
+        target.Price = source.Price
+WHEN NOT MATCHED THEN
+    INSERT (ProductID, ProductName, Category, Price)
+    VALUES (source.ProductID, source.ProductName, source.Category, source.Price);
+
+
+
+Exercise 4: PIVOT and UNPIVOT
+ Goal: Transform data for reporting.
+ Scenario:
+ Show monthly sales quantity per product in a pivoted format, and then unpivot it back.
+
+WITH SalesPerMonth AS (
+    SELECT 
+        p.ProductName,
+        FORMAT(o.OrderDate, 'yyyy-MM') AS SalesMonth,
+        SUM(od.Quantity) AS TotalQuantity
+    FROM OrderDetails od
+    JOIN Orders o ON od.OrderID = o.OrderID
+    JOIN Products p ON od.ProductID = p.ProductID
+    GROUP BY p.ProductName, FORMAT(o.OrderDate, 'yyyy-MM')
+)
+
+SELECT * FROM (
+    SELECT ProductName, SalesMonth, TotalQuantity
+    FROM SalesPerMonth
+) AS src
+PIVOT (
+    SUM(TotalQuantity)
+    FOR SalesMonth IN ([2023-01], [2023-02], [2023-03], [2023-04])
+) AS pvt;
+
+SELECT ProductName, SalesMonth, Quantity
+FROM (
+    SELECT ProductName, [2023-01], [2023-02], [2023-03], [2023-04]
+    FROM (
+        SELECT ProductName, SalesMonth, TotalQuantity
+        FROM SalesPerMonth
+    ) AS src
+    PIVOT (
+        SUM(TotalQuantity)
+        FOR SalesMonth IN ([2023-01], [2023-02], [2023-03], [2023-04])
+    ) AS pvt
+) AS pivoted
+UNPIVOT (
+    Quantity FOR SalesMonth IN ([2023-01], [2023-02], [2023-03], [2023-04])
+) AS unpvt;
+
+
+ Exercise 5: Using CTE to Simplify a Query
+ Goal: Use Common Table Expressions (CTEs) to simplify complex queries.
+ Scenario:
+ The business wants to find all customers who have placed more than 3 orders in total
+
+
+WITH CustomerOrderCounts AS (
+    SELECT 
+        CustomerID,
+        COUNT(OrderID) AS OrderCount
+    FROM Orders
+    GROUP BY CustomerID
+)
+SELECT 
+    c.CustomerID,
+    c.Name,
+    coc.OrderCount
+FROM CustomerOrderCounts coc
+JOIN Customers c ON c.CustomerID = coc.CustomerID
+WHERE coc.OrderCount > 3;
