@@ -1,0 +1,22 @@
+Exercise 1: Inventory Management System
+
+1. Understand the Problem
+When managing a large inventory, it’s important to store product information in a way that makes it easy and fast to add new products, update existing ones, or remove products that are no longer available. Choosing the right data structure helps us quickly find products by their ID without searching through everything one by one. For example, using a dictionary (or HashMap) lets us access products directly using their unique IDs.
+Suitable Data Structures:
+•	HashMap (Dictionary)
+•	ArrayList (Dynamic Array)
+•	Database Systems
+2&3. Setup and Implementation:
+
+  
+ 
+4. Analysis :
+The average time complexity for add, update, and delete operations in a C# Dictionary is O(1),meaning these operations are very fast because the dictionary uses hashing to access elements directly; however, in rare cases like resizing or many hash collisions, the complexity can degrade to O(n)
+Ways  to Optimize These Operations:
+•	Use Efficient Hash Functions
+•	Handle Collisions Properly
+•	Pre-size the Dictionary
+•	Avoid Frequent Resizing
+•	Use Immutable Keys
+
+
